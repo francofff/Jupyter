@@ -1,5 +1,6 @@
 package external;
 
+import java.awt.image.AreaAveragingScaleFilter;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -8,10 +9,18 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
+import entity.Item;
+import entity.Item.ItemBuilder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import javax.servlet.jsp.JspException;
 
 
 public class TicketMasterClient {
@@ -21,7 +30,7 @@ public class TicketMasterClient {
     private static final int DEFAULT_RADIUS = 50;
     private static final String API_KEY = ApiKey.API_KEY;
 
-    public JSONArray search(double lat, double lon, String keyword) {
+    public List<Item> search(double lat, double lon, String keyword) {
         //use default
         if (keyword == null) keyword = DEFAULT_KEYWORD;
         //encode input
@@ -31,8 +40,11 @@ public class TicketMasterClient {
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
+        //Get GeoHash
+        String geoHash = external.GeoHash.encodeGeohash(lat, lon, 8);
+
         //Get link
-        String quary = String.format("apikey=%s&latlong=%s,%s&keyword=%s&radius=%s", API_KEY, lat, lon, keyword, DEFAULT_RADIUS);
+        String quary = String.format("apikey=%s&geopoint=%s&keyword=%s&radius=%s", API_KEY, geoHash, keyword, DEFAULT_RADIUS);
         String url = HOST + PATH + "?" + quary;
         StringBuilder responseBody = new StringBuilder();
 
@@ -52,7 +64,7 @@ public class TicketMasterClient {
             System.out.println("Response code: " + responseCode);
 
             if (responseCode != 200) {
-                return new JSONArray();
+                return new ArrayList<>();
             }
 
             // Create a BufferedReader to help read text from a character-input stream.
@@ -74,24 +86,131 @@ public class TicketMasterClient {
             JSONObject obj = new JSONObject(responseBody.toString());
             if (!obj.isNull("_embedded")) {
                 JSONObject embedded = obj.getJSONObject("_embedded");
-                return embedded.getJSONArray("events");
+                return getItemList(embedded.getJSONArray("events"));
             }
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        return new JSONArray();
+        return new ArrayList<>();
     }
-    // test
+
+    private List<Item> getItemList(JSONArray events) throws JSONException {
+        List<Item> itemList = new ArrayList<>();
+        for (int i = 0; i < events.length(); i++) {
+            JSONObject event = events.getJSONObject(i);
+
+            ItemBuilder builder = new ItemBuilder();
+            if (!event.isNull("id")) {
+                builder.setItemId(event.getString("id"));
+            }
+            if (!event.isNull("name")) {
+                builder.setName(event.getString("name"));
+            }
+            if (!event.isNull("url")) {
+                builder.setUrl(event.getString("url"));
+            }
+            if (!event.isNull("distance")) {
+                builder.setDistance(event.getDouble("distance"));
+            }
+
+            builder.setAddress(getAddress(event));
+            builder.setCategories(getCategories(event));
+            builder.setImageUrl(getImageUrl(event));
+
+            itemList.add(builder.build());
+
+        }
+        return itemList;
+    }
+
+    private String getAddress(JSONObject event) throws JSONException {
+        if (!event.isNull("_embedded")) {
+            JSONObject embeded = event.getJSONObject("_embedded");
+            if (!embeded.isNull("venues")) {
+                JSONArray venues = embeded.getJSONArray("venues");
+                for (int i = 0; i < venues.length(); i++) {
+                    JSONObject venue = venues.getJSONObject(i);
+                    StringBuilder builder = new StringBuilder();
+                    if (!venue.isNull("address")) {
+                        JSONObject address = venue.getJSONObject("address");
+                        if (!address.isNull("line1")) {
+                            builder.append(address.getString("line1"));
+                        }
+                        if (!address.isNull("line2")) {
+                            builder.append(address.getString("line2"));
+                        }
+                        if (!address.isNull("line3")) {
+                            builder.append(address.getString("line3"));
+                        }
+                    }
+                    if (!venue.isNull("city")) {
+                        JSONObject city = venue.getJSONObject("city");
+                        builder.append(",");
+                        builder.append(city.getString("name"));
+                    }
+
+                    return builder.toString() == null ? "" : builder.toString();
+                }
+            }
+        }
+        return "";
+    }
+
+    private String getImageUrl(JSONObject event) throws JSONException {
+        if (!event.isNull("image")) {
+            JSONArray array = event.getJSONArray("image");
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject image = array.getJSONObject(i);
+                if (!image.isNull("url")) {
+                    return image.getString("url");
+                }
+            }
+        }
+        return "";
+    }
+
+
+    private Set<String> getCategories(JSONObject event) throws JSONException {
+        Set<String> categories = new HashSet<>();
+        if (!event.isNull("classifications")) {
+            JSONArray classifications = event.getJSONArray("classifications");
+            for (int i = 0; i < classifications.length(); ++i) {
+                JSONObject classification = classifications.getJSONObject(i);
+                if (!classification.isNull("segment")) {
+                    JSONObject segment = classification.getJSONObject("segment");
+                    if (!segment.isNull("name")) {
+                        categories.add(segment.getString("name"));
+                    }
+                }
+            }
+        }
+        return categories;
+
+    }
+
+
+    // test API call
+//    public static void main(String[] args) {
+//        TicketMasterClient client = new TicketMasterClient();
+//        JSONArray events = client.search(33.77, -84.39, null);
+//        try {
+//            for (int i = 0; i < events.length(); ++i) {
+//                JSONObject event = events.getJSONObject(i);
+//                System.out.println(event.toString(2));
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//
+//    }
+
+    //test
     public static void main(String[] args) {
         TicketMasterClient client = new TicketMasterClient();
-        JSONArray events = client.search(33.77, -84.39, null);
-        try {
-            for (int i = 0; i < events.length(); ++i) {
-                JSONObject event = events.getJSONObject(i);
-                System.out.println(event.toString(2));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        List<Item> events = client.search(33.77, -84.39, null);
+
+        for(Item event:events){
+            System.out.println(event.toJSONObject());
         }
 
     }
