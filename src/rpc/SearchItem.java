@@ -17,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Set;
 
 @WebServlet("/search")
 public class SearchItem extends HttpServlet {
@@ -43,9 +44,12 @@ public class SearchItem extends HttpServlet {
         DBConnection connection = DBConnectionFactory.getConnection();
         try {
             List<Item> items = connection.searchItems(lat, lon, term);
+            Set<String> favoriteItemIds = connection.getFavoriteItemIds(userId);
 
             JSONArray array = new JSONArray();
             for (Item item : items) {
+                JSONObject object = item.toJSONObject();
+                object.put("favorite", favoriteItemIds.contains(item.getItemId()));
                 array.put(item.toJSONObject());
             }
             RpcHelper.writeJsonArray(response, array);
