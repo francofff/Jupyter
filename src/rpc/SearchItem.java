@@ -36,6 +36,7 @@ public class SearchItem extends HttpServlet {
 
         // optional
         String userId = session.getAttribute("user_id").toString();
+        //String userId = "1234";
 
         double lat = Double.parseDouble(request.getParameter("lat"));
         double lon = Double.parseDouble(request.getParameter("lon"));

@@ -14,14 +14,14 @@ import java.io.IOException;
 
 @WebServlet("/login")
 public class login extends HttpServlet {
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         DBConnection connection = DBConnectionFactory.getConnection();
         try {
             HttpSession session = request.getSession(false);
             JSONObject result = new JSONObject();
             if(session != null){
                 String userID = session.getAttribute("user_id").toString();
-                result.put("status", "ok")
+                result.put("status", "OK")
                         .put("user_id", userID)
                         .put("name", connection.getFullname(userID));
             }else{
@@ -36,7 +36,7 @@ public class login extends HttpServlet {
         }
     }
 
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         DBConnection connection = DBConnectionFactory.getConnection();
         try {
             JSONObject body = RpcHelper.readJSONObject(request);
@@ -48,7 +48,7 @@ public class login extends HttpServlet {
                 HttpSession session = request.getSession();
                 session.setAttribute("user_id", userId);
                 session.setMaxInactiveInterval(600);
-                result.put("status", "ok")
+                result.put("status", "OK")
                         .put("user_id", userId)
                         .put("name", connection.getFavoriteItems(userId));
             } else {

@@ -44,7 +44,7 @@ public class TicketMasterClient {
         String geoHash = external.GeoHash.encodeGeohash(lat, lon, 8);
 
         //Get link
-        String quary = String.format("apikey=%s&geopoint=%s&keyword=%s&radius=%s", API_KEY, geoHash, keyword, DEFAULT_RADIUS);
+        String quary =  String.format("apikey=%s&latlong=%s,%s&keyword=%s&radius=%s", API_KEY, lat, lon, keyword, DEFAULT_RADIUS);
         String url = HOST + PATH + "?" + quary;
         StringBuilder responseBody = new StringBuilder();
 
@@ -157,8 +157,8 @@ public class TicketMasterClient {
     }
 
     private String getImageUrl(JSONObject event) throws JSONException {
-        if (!event.isNull("image")) {
-            JSONArray array = event.getJSONArray("image");
+        if (!event.isNull("images")) {
+            JSONArray array = event.getJSONArray("images");
             for (int i = 0; i < array.length(); i++) {
                 JSONObject image = array.getJSONObject(i);
                 if (!image.isNull("url")) {
