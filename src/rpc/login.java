@@ -28,6 +28,7 @@ public class login extends HttpServlet {
                 result.put("status", "invalid session");
                 response.setStatus(403);
             }
+            RpcHelper.writeJsonObject(response, result);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -50,7 +51,7 @@ public class login extends HttpServlet {
                 session.setMaxInactiveInterval(600);
                 result.put("status", "OK")
                         .put("user_id", userId)
-                        .put("name", connection.getFavoriteItems(userId));
+                        .put("name", connection.getFullname(userId));
             } else {
                 result.put("status", "user do not exist");
                 response.setStatus(401);

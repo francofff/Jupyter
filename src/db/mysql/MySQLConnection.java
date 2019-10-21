@@ -219,7 +219,7 @@ public class MySQLConnection implements DBConnection {
         if (conn == null) return "";
         String name = "";
         try {
-            String sql = "SELECT first_name, last_name FROM users WHERE id = ?";
+            String sql = "SELECT first_name, last_name FROM users WHERE user_id = ?";
             PreparedStatement statement = conn.prepareStatement(sql);
             statement.setString(1, userId);
             ResultSet resultSet = statement.executeQuery();
